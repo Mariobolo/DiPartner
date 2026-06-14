@@ -17,69 +17,87 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up JDK 17
+    - name: Set up JDK 11
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'adopt'
 
     - name: Set up Android SDK
       uses: android-actions/setup-android@v3
       with:
         api-level: 30
-        build-tools: "30.0.3"
+        build-tools: "30.0.2"
         ndk-version: "21.4.7075529"
 
     - name: Accept Android SDK licenses
-      run: |
-        yes | sdkmanager --licenses
+      run: yes | sdkmanager --licenses || true
 
     - name: Make gradlew executable
       run: chmod +x gradlew
 
     - name: Build debug APK
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug --stacktrace
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         JAVA_HOME: ${{ env.JAVA_HOME }}
 
     - name: Build release APK
-      run: ./gradlew assembleRelease
+      run: ./gradlew assembleRelease --stacktrace
       env:
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         JAVA_HOME: ${{ env.JAVA_HOME }}
 
-    - name: List build outputs
-      run: ls -la app/build/outputs/apk/debug/ app/build/outputs/apk/release/
+    - name: Find APK files
+      id: find_apk
+      run: |
+        echo "=== Searching for APK files ==="
+        find . -name "*.apk" -type f 2>/dev/null || echo "No APK found with find"
+        echo "=== Listing build outputs directory ==="
+        ls -laR app/build/outputs/ 2>/dev/null || echo "No outputs directory"
+        
+        # 设置 APK 路径变量
+        DEBUG_APK=$(find app/build/outputs -name "*debug*.apk" -type f | head -1)
+        RELEASE_APK=$(find app/build/outputs -name "*release*.apk" -type f | head -1)
+        
+        echo "debug_apk=$DEBUG_APK" >> $GITHUB_OUTPUT
+        echo "release_apk=$RELEASE_APK" >> $GITHUB_OUTPUT
+        
+        echo "Debug APK: $DEBUG_APK"
+        echo "Release APK: $RELEASE_APK"
 
     - name: Upload debug APK
+      if: steps.find_apk.outputs.debug_apk != ''
       uses: actions/upload-artifact@v4
       with:
         name: debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+        path: ${{ steps.find_apk.outputs.debug_apk }}
+        if-no-files-found: warn
 
     - name: Upload release APK
+      if: steps.find_apk.outputs.release_apk != ''
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
-        path: app/build/outputs/apk/release/*.apk
+        path: ${{ steps.find_apk.outputs.release_apk }}
+        if-no-files-found: warn
 
     - name: Create release on tag
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          app/build/outputs/apk/debug/*.apk
-          app/build/outputs/apk/release/*.apk
+          ${{ steps.find_apk.outputs.debug_apk }}
+          ${{ steps.find_apk.outputs.release_apk }}
         name: Release ${{ github.ref_name }}
         body: |
           ## 📦 Build Artifacts
           
           ### Debug APK
-          - `app-debug.apk` - Debug build for testing
+          - Debug build for testing
           
           ### Release APK
-          - `app-release.apk` - Production-ready build
+          - Production-ready build
           
           ## 🚀 Changes
           - Automated build from CI
@@ -96,11 +114,15 @@ jobs:
         mkdir -p build_artifacts
         
         # Copy APKs to build directory
-        cp app/build/outputs/apk/debug/*.apk build_artifacts/ || true
-        cp app/build/outputs/apk/release/*.apk build_artifacts/ || true
+        if [ -n "${{ steps.find_apk.outputs.debug_apk }}" ]; then
+          cp "${{ steps.find_apk.outputs.debug_apk }}" build_artifacts/ || true
+        fi
+        if [ -n "${{ steps.find_apk.outputs.release_apk }}" ]; then
+          cp "${{ steps.find_apk.outputs.release_apk }}" build_artifacts/ || true
+        fi
         
         # Check if there are changes
-        if [ -n "$(git status --porcelain)" ]; then
+        if [ -n "$(git status --porcelain build_artifacts/)" ]; then
           git add build_artifacts/
           git commit -m "chore: update build artifacts [CI]"
           git push

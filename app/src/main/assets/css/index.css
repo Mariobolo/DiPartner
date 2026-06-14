@@ -121,11 +121,11 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 40px;
+    height: 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 20px;
+    padding: 0 5px;
     font-size: 12px;
     z-index: 1000;
     pointer-events: auto;
@@ -258,7 +258,7 @@ body {
 .layout-left {
     position: absolute;
     left: 50px;
-    top: 60px;
+    top: 40px;
     /* 从50px调整为60px，为顶部状态栏留出更多空间 */
     pointer-events: auto;
     /* 重新启用指针事件 */
@@ -293,9 +293,9 @@ body {
 /* 底部卡片 */
 .card-view {
     position: absolute;
-    bottom: 100px;
-    left: 50px;
-    right: 50px;
+    bottom: 50px;
+    left: 40px;
+    right: 40px;
     height: 120px;
     /* 增加高度以适应内容 */
     background-color: transparent;
@@ -1492,6 +1492,145 @@ body {
 
 #wallpaper-tab .setting-item label:active {
     opacity: 0.7;
+}
+
+/* 设置区域样式 */
+.setting-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.section-title {
+    font-size: 14px;
+    color: #4dabf7;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+/* 单选按钮组 */
+.radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 8px 15px;
+    background: #333333;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.radio-label input[type="radio"] {
+    display: none;
+}
+
+.radio-label span {
+    font-size: 14px;
+    color: #cccccc;
+}
+
+.radio-label input[type="radio"]:checked + span {
+    color: #4dabf7;
+}
+
+.radio-label:active,
+.radio-label input[type="radio"]:checked {
+    background: #3a5070;
+}
+
+/* 浏览按钮 */
+.browse-btn {
+    padding: 8px 16px;
+    background: #4dabf7;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: opacity 0.3s ease;
+}
+
+.browse-btn:active {
+    opacity: 0.7;
+}
+
+/* 按钮组 */
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    flex: 1;
+    padding: 12px 0;
+    background: #333333;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.control-btn:active {
+    background: #4dabf7;
+    border-color: #4dabf7;
+}
+
+/* 滑块容器 */
+.slider-container {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 10px;
+}
+
+.setting-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    background: #333333;
+    border-radius: 4px;
+    outline: none;
+}
+
+.setting-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4dabf7;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.setting-slider::-webkit-slider-thumb:hover {
+    background: #3a86c9;
+}
+
+#displayScaleValue {
+    min-width: 45px;
+    text-align: right;
+    color: #4dabf7;
+    font-weight: bold;
+}
+
+/* 显示设置页面样式 */
+#display-tab .setting-item {
+    flex-wrap: wrap;
+}
+
+#display-tab .slider-container {
+    width: 100%;
+    margin-top: 10px;
 }
 
 /* 设置弹窗滚动条样式 */

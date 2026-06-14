@@ -223,34 +223,4 @@ public class WallpaperCategoryDatabaseHelper extends SQLiteOpenHelper {
         db.close();
         Log.d(TAG, "分类表已清空");
     }
-    
-    /**
-     * 检查是否启用了在线壁纸
-     * @return 是否启用在线壁纸
-     */
-    public boolean isOnlineWallpaperEnabled() {
-        // 这个方法应该在WallpaperSettingsDatabaseHelper中实现，而不是这里
-        // 返回默认值false
-        return false;
-    }
-    
-    /**
-     * 检查是否启用了随机模式
-     * @return 是否启用随机模式
-     */
-    public boolean isRandomModeEnabled() {
-        // 这个方法应该在WallpaperSettingsDatabaseHelper中实现，而不是这里
-        // 返回默认值true
-        return true;
-    }
-    
-    /**
-     * 检查是否启用了指定模式
-     * @return 是否启用指定模式
-     */
-    public boolean isSpecifiedModeEnabled() {
-        // 这个方法应该在WallpaperSettingsDatabaseHelper中实现，而不是这里
-        // 返回默认值false
-        return false;
-    }
 }

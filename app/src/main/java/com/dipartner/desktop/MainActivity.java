@@ -435,6 +435,12 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDisplayZoomControls(false);
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+        
+        // 设置 WebView 的默认缩放密度为较小的值，使界面更紧凑
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webSettings.setForceDark(WebSettings.FORCE_DARK_OFF);
+        }
 
         // 添加JavaScript接口
         webView.addJavascriptInterface(webViewBridge, "Android");

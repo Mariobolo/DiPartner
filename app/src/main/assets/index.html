@@ -10,7 +10,6 @@
     <script src="js/toast.js"></script>
     <script src="js/datetime.js"></script>
     <script src="js/wallpaper.js"></script>
-    <script src="js/wallpaper-swipe-bootstrap.js"></script>
     <script src="js/weather.js"></script>
     <script src="js/music.js"></script>
     <script src="js/map.js"></script>
@@ -226,6 +225,7 @@
                 <!-- TAB导航 -->
                 <div class="tab-navigation">
                     <button class="tab-button active" data-tab="wallpaper">壁纸设置</button>
+                    <button class="tab-button" data-tab="display">显示设置</button>
                     <button class="tab-button" data-tab="components">组件配置</button>
                     <button class="tab-button" data-tab="apps">系统管理</button>
                 </div>
@@ -238,101 +238,69 @@
                                 class="setting-checkbox">
                         </div>
 
-                        <div class="setting-item">
-                            <label>本地随机</label>
-                            <input type="checkbox" id="randomModeCheckbox" class="setting-checkbox">
-                        </div>
-                        <div class="setting-item">
-                            <label>本地指定</label>
-                            <input type="checkbox" id="specifiedModeCheckbox" class="setting-checkbox">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>高清壁纸</label>
-                            <input type="checkbox" id="category36" class="category-checkbox" data-category-id="36">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>美女模特</label>
-                            <input type="checkbox" id="category6" class="category-checkbox" data-category-id="6">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>爱情美图</label>
-                            <input type="checkbox" id="category30" class="category-checkbox" data-category-id="30">
+                        <div class="setting-section">
+                            <label class="section-title">壁纸模式</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="wallpaperMode" value="local" checked>
+                                    <span>本地壁纸</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="wallpaperMode" value="online">
+                                    <span>在线壁纸</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="wallpaperMode" value="3d">
+                                    <span>3D壁纸</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="setting-item">
-                            <label>风景大片</label>
-                            <input type="checkbox" id="category9" class="category-checkbox" data-category-id="9">
+                            <label>本地壁纸目录</label>
+                            <input type="text" id="localWallpaperPath" class="setting-input" 
+                                placeholder="SD卡/dipartner/wallpaper" value="dipartner/wallpaper">
+                            <button class="browse-btn" id="browseWallpaperDir">浏览</button>
                         </div>
-
-                        <div class="setting-item">
-                            <label>清新风格</label>
-                            <input type="checkbox" id="category15" class="category-checkbox" data-category-id="15">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>动漫卡通</label>
-                            <input type="checkbox" id="category26" class="category-checkbox" data-category-id="26">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>明星风尚</label>
-                            <input type="checkbox" id="category11" class="category-checkbox" data-category-id="11">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>萌宠动物</label>
-                            <input type="checkbox" id="category14" class="category-checkbox" data-category-id="14">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>游戏壁纸</label>
-                            <input type="checkbox" id="category5" class="category-checkbox" data-category-id="5">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>汽车天下</label>
-                            <input type="checkbox" id="category12" class="category-checkbox" data-category-id="12">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>炫酷时尚</label>
-                            <input type="checkbox" id="category10" class="category-checkbox" data-category-id="10">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>军事天地</label>
-                            <input type="checkbox" id="category22" class="category-checkbox" data-category-id="22">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>劲爆体育</label>
-                            <input type="checkbox" id="category16" class="category-checkbox" data-category-id="16">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>纹理壁纸</label>
-                            <input type="checkbox" id="category32" class="category-checkbox" data-category-id="32">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>文字壁纸</label>
-                            <input type="checkbox" id="category35" class="category-checkbox" data-category-id="35">
-                        </div>
-
-                        <div class="setting-item">
-                            <label>限时壁纸</label>
-                            <input type="checkbox" id="category1" class="category-checkbox" data-category-id="1">
-                        </div>
-
-
 
                         <div class="setting-item">
                             <label>轮播间隔(秒)</label>
                             <input type="number" id="switchIntervalInput" class="setting-input" min="5"
                                 max="300" value="15">
+                        </div>
+
+                        <div class="setting-section">
+                            <label class="section-title">壁纸控制</label>
+                            <div class="button-group">
+                                <button class="control-btn" id="prevWallpaperBtn">上一张</button>
+                                <button class="control-btn" id="nextWallpaperBtn">下一张</button>
+                                <button class="control-btn" id="refreshWallpaperBtn">刷新壁纸</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 显示设置TAB -->
+                    <div class="tab-content" id="display-tab">
+                        <div class="setting-item">
+                            <label>界面缩放</label>
+                            <div class="slider-container">
+                                <input type="range" id="displayScaleSlider" class="setting-slider" 
+                                    min="50" max="150" value="100" step="5">
+                                <span id="displayScaleValue">100%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-section">
+                            <label class="section-title">缩放预设</label>
+                            <div class="button-group">
+                                <button class="control-btn scale-preset" data-scale="75">75%</button>
+                                <button class="control-btn scale-preset" data-scale="100">100%</button>
+                                <button class="control-btn scale-preset" data-scale="125">125%</button>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <button class="control-btn" id="resetDisplayBtn" style="width: 100%;">恢复默认</button>
                         </div>
                     </div>
 

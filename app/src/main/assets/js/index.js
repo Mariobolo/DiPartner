@@ -283,6 +283,88 @@ function initSettingsModal() {
     });
 }
 
+// 加载显示设置
+function loadDisplaySettings() {
+    if (typeof Android !== 'undefined' && Android.getDisplaySettings) {
+        try {
+            const settingsJson = Android.getDisplaySettings();
+            const settings = JSON.parse(settingsJson);
+            const scale = settings.display_scale || 1.0;
+            
+            // 更新滑块和显示值
+            const slider = document.getElementById('displayScaleSlider');
+            const scaleValue = document.getElementById('displayScaleValue');
+            if (slider) {
+                slider.value = scale * 100;
+            }
+            if (scaleValue) {
+                scaleValue.textContent = Math.round(scale * 100) + '%';
+            }
+        } catch (e) {
+            console.error('加载显示设置失败:', e);
+        }
+    }
+}
+
+// 初始化显示设置事件
+function initDisplaySettings() {
+    const slider = document.getElementById('displayScaleSlider');
+    const scaleValue = document.getElementById('displayScaleValue');
+    const resetBtn = document.getElementById('resetDisplayBtn');
+    const presetBtns = document.querySelectorAll('.scale-preset');
+    
+    if (slider) {
+        slider.addEventListener('input', function() {
+            const scale = this.value / 100;
+            if (scaleValue) {
+                scaleValue.textContent = this.value + '%';
+            }
+        });
+        
+        slider.addEventListener('change', function() {
+            const scale = this.value / 100;
+            if (typeof Android !== 'undefined' && Android.setWebViewScale) {
+                Android.setWebViewScale(scale);
+            }
+            if (typeof showToast === 'function') {
+                showToast('界面缩放已调整为 ' + this.value + '%');
+            }
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (slider) slider.value = 100;
+            if (scaleValue) scaleValue.textContent = '100%';
+            if (typeof Android !== 'undefined' && Android.setWebViewScale) {
+                Android.setWebViewScale(1.0);
+            }
+            if (typeof showToast === 'function') {
+                showToast('显示设置已恢复默认');
+            }
+        });
+    }
+    
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const scale = parseInt(this.dataset.scale) / 100;
+            if (slider) slider.value = this.dataset.scale;
+            if (scaleValue) scaleValue.textContent = this.dataset.scale + '%';
+            if (typeof Android !== 'undefined' && Android.setWebViewScale) {
+                Android.setWebViewScale(scale);
+            }
+            if (typeof showToast === 'function') {
+                showToast('界面缩放已调整为 ' + this.dataset.scale + '%');
+            }
+        });
+    });
+}
+
+// 页面加载完成后初始化显示设置
+document.addEventListener('DOMContentLoaded', function() {
+    initDisplaySettings();
+});
+
 // 加载壁纸设置
 function loadWallpaperSettings() {
     isLoadingSettings = true;
@@ -292,37 +374,33 @@ function loadWallpaperSettings() {
                 const settings = JSON.parse(settingsJson);
                 console.log('加载壁纸设置:', settings);
 
-                // 设置复选框状态
+                // 设置壁纸轮播复选框
                 const wallpaperCarouselCheckbox = document.getElementById('wallpaperCarouselCheckbox');
                 if (wallpaperCarouselCheckbox) {
                     wallpaperCarouselCheckbox.checked = settings.wallpaper_carousel;
                 }
 
-                const randomModeCheckbox = document.getElementById('randomModeCheckbox');
-                if (randomModeCheckbox) {
-                    randomModeCheckbox.checked = settings.random_mode !== undefined ? settings.random_mode : false;
+                // 设置壁纸模式单选按钮
+                const modeRadios = document.querySelectorAll('input[name="wallpaperMode"]');
+                modeRadios.forEach(radio => {
+                    radio.checked = radio.value === (settings.wallpaper_mode || 'local');
+                });
+
+                // 设置本地壁纸目录
+                const localWallpaperPathInput = document.getElementById('localWallpaperPath');
+                if (localWallpaperPathInput) {
+                    localWallpaperPathInput.value = settings.local_wallpaper_path || 'dipartner/wallpaper';
                 }
 
-                const specifiedModeCheckbox = document.getElementById('specifiedModeCheckbox');
-                if (specifiedModeCheckbox) {
-                    specifiedModeCheckbox.checked = settings.specified_mode !== undefined ? settings.specified_mode : false;
-                }
-
+                // 设置轮播间隔
                 const switchIntervalInput = document.getElementById('switchIntervalInput');
                 if (switchIntervalInput) {
-                    switchIntervalInput.value = settings.switch_interval / 1000;
+                    switchIntervalInput.value = (settings.switch_interval || 15000) / 1000;
                 }
-
-                // 加载已启用的分类状态
-                loadEnabledCategories();
 
                 // 设置壁纸轮播间隔输入框的显示
                 if (switchIntervalInput) {
-                    if (settings.wallpaper_carousel) {
-                        switchIntervalInput.parentElement.style.display = 'flex';
-                    } else {
-                        switchIntervalInput.parentElement.style.display = 'none';
-                    }
+                    switchIntervalInput.parentElement.style.display = settings.wallpaper_carousel ? 'flex' : 'none';
                 }
 
                 // 加载原桌面自启和开机问候语设置
@@ -335,43 +413,38 @@ function loadWallpaperSettings() {
         });
         Android.getWallpaperSettingsAsync(callbackId);
     } else if (typeof Android !== 'undefined' && Android.getWallpaperSettings) {
-        // 回退到同步方法
         isLoadingSettings = true;
         try {
             const settingsJson = Android.getWallpaperSettings();
             const settings = JSON.parse(settingsJson);
 
-            // 设置复选框状态
+            // 设置壁纸轮播复选框
             const wallpaperCarouselCheckbox = document.getElementById('wallpaperCarouselCheckbox');
             if (wallpaperCarouselCheckbox) {
                 wallpaperCarouselCheckbox.checked = settings.wallpaper_carousel;
             }
 
-            const randomModeCheckbox = document.getElementById('randomModeCheckbox');
-            if (randomModeCheckbox) {
-                randomModeCheckbox.checked = settings.random_mode !== undefined ? settings.random_mode : false;
+            // 设置壁纸模式单选按钮
+            const modeRadios = document.querySelectorAll('input[name="wallpaperMode"]');
+            modeRadios.forEach(radio => {
+                radio.checked = radio.value === (settings.wallpaper_mode || 'local');
+            });
+
+            // 设置本地壁纸目录
+            const localWallpaperPathInput = document.getElementById('localWallpaperPath');
+            if (localWallpaperPathInput) {
+                localWallpaperPathInput.value = settings.local_wallpaper_path || 'dipartner/wallpaper';
             }
 
-            const specifiedModeCheckbox = document.getElementById('specifiedModeCheckbox');
-            if (specifiedModeCheckbox) {
-                specifiedModeCheckbox.checked = settings.specified_mode !== undefined ? settings.specified_mode : false;
-            }
-
+            // 设置轮播间隔
             const switchIntervalInput = document.getElementById('switchIntervalInput');
             if (switchIntervalInput) {
-                switchIntervalInput.value = settings.switch_interval / 1000;
+                switchIntervalInput.value = (settings.switch_interval || 15000) / 1000;
             }
-
-            // 加载已启用的分类状态
-            loadEnabledCategories();
 
             // 设置壁纸轮播间隔输入框的显示
             if (switchIntervalInput) {
-                if (settings.wallpaper_carousel) {
-                    switchIntervalInput.parentElement.style.display = 'flex';
-                } else {
-                    switchIntervalInput.parentElement.style.display = 'none';
-                }
+                switchIntervalInput.parentElement.style.display = settings.wallpaper_carousel ? 'flex' : 'none';
             }
 
             // 加载原桌面自启和开机问候语设置
@@ -397,84 +470,6 @@ function loadSystemSettings(settings) {
     if (bootGreetingCheckbox) {
         bootGreetingCheckbox.checked = settings.boot_greeting !== undefined ? settings.boot_greeting : false; // 默认不启用
     }
-}
-
-// 加载已启用的分类状态
-function loadEnabledCategories() {
-    if (typeof Android !== 'undefined' && Android.getEnabledCategoriesAsync) {
-        const callbackId = AsyncCallbackManager.register(function (enabledCategoriesJson) {
-            try {
-                const enabledCategories = JSON.parse(enabledCategoriesJson);
-                const checkboxes = document.querySelectorAll('.category-checkbox');
-                checkboxes.forEach(checkbox => {
-                    const categoryId = checkbox.getAttribute('data-category-id');
-                    if (enabledCategories.includes(categoryId)) {
-                        checkbox.checked = true;
-                    } else {
-                        checkbox.checked = false;
-                    }
-                });
-                console.log('已加载在线壁纸分类状态');
-            } catch (e) {
-                console.error('加载已启用分类时出错:', e);
-            }
-        });
-        Android.getEnabledCategoriesAsync(callbackId);
-    } else if (typeof Android !== 'undefined' && Android.getEnabledCategories) {
-        // 回退到同步方法
-        try {
-            const enabledCategoriesJson = Android.getEnabledCategories();
-            const enabledCategories = JSON.parse(enabledCategoriesJson);
-            const checkboxes = document.querySelectorAll('.category-checkbox');
-            checkboxes.forEach(checkbox => {
-                const categoryId = checkbox.getAttribute('data-category-id');
-                if (enabledCategories.includes(categoryId)) {
-                    checkbox.checked = true;
-                } else {
-                    checkbox.checked = false;
-                }
-            });
-            console.log('已加载在线壁纸分类状态');
-        } catch (e) {
-            console.error('加载已启用分类时出错:', e);
-        }
-    }
-}
-
-// 初始化分类复选框事件
-function initCategoryCheckboxEvents() {
-    console.log('initCategoryCheckboxEvents 被调用');
-    const checkboxes = document.querySelectorAll('.category-checkbox');
-    console.log('找到的分类复选框数量:', checkboxes.length);
-    checkboxes.forEach(checkbox => {
-        if (!checkbox.dataset.listenerAdded) {
-            console.log('为复选框添加事件监听器:', checkbox.getAttribute('data-category-id'));
-            checkbox.addEventListener('click', function () {
-                console.log('分类复选框click事件被触发');
-                const categoryId = this.getAttribute('data-category-id');
-                const enabled = this.checked;
-
-                if (typeof Android !== 'undefined' && Android.updateCategoryEnabledAsync) {
-                    const callbackId = AsyncCallbackManager.register(function (result) {
-                        if (result === "true") {
-                            console.log('分类状态已更新:', categoryId, enabled);
-                            showToast('分类状态保存成功');
-                        } else {
-                            console.error('分类状态更新失败');
-                            showToast('分类状态保存失败');
-                        }
-                    });
-                    Android.updateCategoryEnabledAsync(categoryId, enabled, callbackId);
-                } else if (typeof Android !== 'undefined' && Android.updateCategoryEnabled) {
-                    // 回退到同步方法
-                    Android.updateCategoryEnabled(categoryId, enabled);
-                    console.log('分类状态已更新:', categoryId, enabled);
-                    showToast('分类状态保存成功');
-                }
-            });
-            checkbox.dataset.listenerAdded = 'true';
-        }
-    });
 }
 
 
@@ -679,15 +674,15 @@ function showSettingsModal() {
     // 加载壁纸设置（包含系统管理设置）
     loadWallpaperSettings();
 
+    // 加载显示设置
+    loadDisplaySettings();
+
     // 加载组件配置
     loadComponentConfigs();
 
     // 初始化系统管理TAB的事件监听器
     initRestartAppButton();
     initADBButton();
-
-    // 初始化分类复选框事件
-    initCategoryCheckboxEvents();
     
     // 启动自动关闭定时器
     resetAutoCloseTimer();
@@ -737,6 +732,16 @@ window.handleSaveSwitchIntervalSettingCallback = function (callbackId, result) {
 
 // 处理获取所有壁纸设置的回调
 window.handleGetWallpaperSettingsCallback = function (callbackId, result) {
+    AsyncCallbackManager.execute(callbackId, result);
+};
+
+// 处理保存壁纸设置的回调
+window.handleSaveWallpaperSettingsCallback = function (callbackId, result) {
+    AsyncCallbackManager.execute(callbackId, result === 'true');
+};
+
+// 处理浏览目录的回调
+window.handleBrowseDirectoryCallback = function (callbackId, result) {
     AsyncCallbackManager.execute(callbackId, result);
 };
 

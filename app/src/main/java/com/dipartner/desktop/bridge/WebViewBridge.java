@@ -27,6 +27,7 @@ import com.dipartner.desktop.database.ConfigAppDatabaseHelper;
 import com.dipartner.desktop.database.QuickAppDatabaseHelper;
 import com.dipartner.desktop.database.WallpaperCategoryDatabaseHelper;
 import com.dipartner.desktop.database.WallpaperSettingsDatabaseHelper;
+import com.dipartner.desktop.database.DisplaySettingsDatabaseHelper;
 import com.dipartner.desktop.service.MediaSessionService;
 import com.dipartner.desktop.utils.AppUtils;
 import com.dipartner.desktop.utils.WallpaperCategoryApiUtils;
@@ -44,6 +45,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,6 +81,7 @@ public class WebViewBridge {
     private QuickAppDatabaseHelper quickAppDbHelper;
     private WallpaperCategoryDatabaseHelper wallpaperDbHelper;
     private WallpaperSettingsDatabaseHelper wallpaperSettingsDbHelper;
+    private DisplaySettingsDatabaseHelper displaySettingsDbHelper;
     private ConfigAppDatabaseHelper configAppDbHelper;
     private ComponentConfigDatabaseHelper componentConfigDbHelper;
 
@@ -118,6 +121,7 @@ public class WebViewBridge {
         this.quickAppDbHelper = QuickAppDatabaseHelper.getInstance(context);
         this.wallpaperDbHelper = WallpaperCategoryDatabaseHelper.getInstance(context);
         this.wallpaperSettingsDbHelper = WallpaperSettingsDatabaseHelper.getInstance(context);
+        this.displaySettingsDbHelper = DisplaySettingsDatabaseHelper.getInstance(context);
         this.configAppDbHelper = ConfigAppDatabaseHelper.getInstance(context);
         this.componentConfigDbHelper = ComponentConfigDatabaseHelper.getInstance(context);
 
@@ -710,27 +714,20 @@ public class WebViewBridge {
      *
      * @return Base64编码的图片数据或URL
      */
-    private String getRandomOnlineWallpaper() {
+    private String getRandomOnlineWallpaperInternal() {
         try {
-            // 获取已启用的分类
-            List<Map<String, Object>> enabledCategories = wallpaperDbHelper.getAllCategories();
-            List<Map<String, Object>> filteredCategories = new ArrayList<>();
-
-            // 过滤出已启用的分类
-            for (Map<String, Object> category : enabledCategories) {
-                if ((boolean) category.get("enabled")) {
-                    filteredCategories.add(category);
-                }
-            }
-
-            // 如果没有启用的分类，返回空字符串
-            if (filteredCategories.isEmpty()) {
+            // 获取所有分类
+            List<Map<String, Object>> allCategories = wallpaperDbHelper.getAllCategories();
+            
+            // 如果没有分类，返回空字符串
+            if (allCategories.isEmpty()) {
+                Log.d(TAG, "没有壁纸分类，返回空字符串");
                 return "";
             }
 
             // 随机选择一个分类
             Random random = new Random();
-            Map<String, Object> selectedCategory = filteredCategories.get(random.nextInt(filteredCategories.size()));
+            Map<String, Object> selectedCategory = allCategories.get(random.nextInt(allCategories.size()));
 
             // 获取分类ID和数量
             String categoryId = (String) selectedCategory.get("id");
@@ -1789,13 +1786,9 @@ public class WebViewBridge {
             JSONObject settingsObj = new JSONObject();
 
             settingsObj.put("wallpaper_carousel", settings.get("wallpaper_carousel"));
-            settingsObj.put("local_wallpaper", settings.get("local_wallpaper"));
-            settingsObj.put("online_wallpaper", settings.get("online_wallpaper"));
+            settingsObj.put("wallpaper_mode", settings.get("wallpaper_mode"));
+            settingsObj.put("local_wallpaper_path", settings.get("local_wallpaper_path"));
             settingsObj.put("switch_interval", settings.get("switch_interval"));
-            settingsObj.put("random_mode", settings.get("random_mode"));
-            settingsObj.put("specified_mode", settings.get("specified_mode"));
-            settingsObj.put("byd_auto_start", settings.get("byd_auto_start"));
-            settingsObj.put("boot_greeting", settings.get("boot_greeting"));
 
             return settingsObj.toString();
         } catch (Exception e) {
@@ -1819,13 +1812,9 @@ public class WebViewBridge {
                     JSONObject settingsObj = new JSONObject();
 
                     settingsObj.put("wallpaper_carousel", settings.get("wallpaper_carousel"));
-                    settingsObj.put("local_wallpaper", settings.get("local_wallpaper"));
-                    settingsObj.put("online_wallpaper", settings.get("online_wallpaper"));
+                    settingsObj.put("wallpaper_mode", settings.get("wallpaper_mode"));
+                    settingsObj.put("local_wallpaper_path", settings.get("local_wallpaper_path"));
                     settingsObj.put("switch_interval", settings.get("switch_interval"));
-                    settingsObj.put("random_mode", settings.get("random_mode"));
-                    settingsObj.put("specified_mode", settings.get("specified_mode"));
-                    settingsObj.put("byd_auto_start", settings.get("byd_auto_start"));
-                    settingsObj.put("boot_greeting", settings.get("boot_greeting"));
 
                     final String result = settingsObj.toString();
 
@@ -1860,6 +1849,133 @@ public class WebViewBridge {
                 }
             }
         }).start();
+    }
+
+    /**
+     * 获取本地随机壁纸
+     *
+     * @param path 本地壁纸目录路径
+     * @return 壁纸文件路径
+     */
+    @JavascriptInterface
+    public String getRandomLocalWallpaper(String path) {
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory(), path);
+            if (!dir.exists() || !dir.isDirectory()) {
+                Log.w(TAG, "本地壁纸目录不存在: " + dir.getAbsolutePath());
+                return "";
+            }
+
+            File[] files = dir.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    String lowerName = name.toLowerCase();
+                    return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || 
+                           lowerName.endsWith(".png") || lowerName.endsWith(".webp");
+                }
+            });
+
+            if (files == null || files.length == 0) {
+                Log.w(TAG, "本地壁纸目录为空: " + dir.getAbsolutePath());
+                return "";
+            }
+
+            int randomIndex = new Random().nextInt(files.length);
+            String wallpaperPath = "file://" + files[randomIndex].getAbsolutePath();
+            Log.d(TAG, "获取本地壁纸: " + wallpaperPath);
+            return wallpaperPath;
+        } catch (Exception e) {
+            Log.e(TAG, "获取本地壁纸失败", e);
+            return "";
+        }
+    }
+
+    /**
+     * 获取在线随机壁纸（公开方法，供JavaScript调用）
+     *
+     * @return 在线壁纸URL
+     */
+    @JavascriptInterface
+    public String getRandomOnlineWallpaper() {
+        return getRandomOnlineWallpaperInternal();
+    }
+
+    /**
+     * 保存壁纸设置
+     *
+     * @param settingsJson JSON格式的设置
+     * @param callbackId   回调ID
+     */
+    @JavascriptInterface
+    public void saveWallpaperSettingsAsync(final String settingsJson, final String callbackId) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean success = false;
+                try {
+                    JSONObject settings = new JSONObject(settingsJson);
+                    boolean carousel = settings.optBoolean("wallpaper_carousel", false);
+                    String mode = settings.optString("wallpaper_mode", "local");
+                    String path = settings.optString("local_wallpaper_path", "dipartner/wallpaper");
+                    int interval = settings.optInt("switch_interval", 15000);
+
+                    wallpaperSettingsDbHelper.saveSettings(carousel, mode, path, interval);
+                    success = true;
+                    Log.d(TAG, "保存壁纸设置成功: " + settingsJson);
+                } catch (Exception e) {
+                    Log.e(TAG, "保存壁纸设置失败", e);
+                }
+
+                final boolean finalSuccess = success;
+                mActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mActivity.webView != null) {
+                            String javascript = String.format(
+                                    "javascript:window.handleSaveWallpaperSettingsCallback('%s', '%s')",
+                                    callbackId, finalSuccess ? "true" : "false");
+                            mActivity.webView.loadUrl(javascript);
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * 加载3D壁纸
+     */
+    @JavascriptInterface
+    public void load3dWallpaper() {
+        Log.d(TAG, "加载3D壁纸");
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mActivity.webView.loadUrl("file:///android_asset/leapmotor3d/index.html");
+            }
+        });
+    }
+
+    /**
+     * 浏览目录
+     *
+     * @param callbackId 回调ID
+     */
+    @JavascriptInterface
+    public void browseDirectory(final String callbackId) {
+        Log.d(TAG, "浏览目录");
+        final String result = "dipartner/wallpaper";
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mActivity.webView != null) {
+                    String javascript = String.format(
+                            "javascript:window.handleBrowseDirectoryCallback('%s', %s)",
+                            callbackId, org.json.JSONObject.quote(result));
+                    mActivity.webView.loadUrl(javascript);
+                }
+            }
+        });
     }
 
     /**
@@ -3543,6 +3659,48 @@ public class WebViewBridge {
         } catch (Exception e) {
             Log.e(TAG, "获取静态常量失败: " + fieldName, e);
             return 0;
+        }
+    }
+    
+    /**
+     * 设置WebView缩放比例
+     *
+     * @param scale 缩放比例 (0.5 - 1.5)
+     */
+    @JavascriptInterface
+    public void setWebViewScale(float scale) {
+        mActivity.runOnUiThread(() -> {
+            try {
+                if (mActivity.webView != null) {
+                    // 限制缩放范围
+                    float clampedScale = Math.max(0.5f, Math.min(1.5f, scale));
+                    mActivity.webView.setInitialScale((int)(clampedScale * 100));
+                    Log.d(TAG, "WebView缩放已设置为: " + (int)(clampedScale * 100) + "%");
+                    
+                    // 保存设置
+                    displaySettingsDbHelper.updateDisplayScale(clampedScale);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "设置WebView缩放失败", e);
+            }
+        });
+    }
+    
+    /**
+     * 获取显示设置
+     *
+     * @return JSON格式的显示设置
+     */
+    @JavascriptInterface
+    public String getDisplaySettings() {
+        try {
+            Map<String, Object> settings = displaySettingsDbHelper.getAllSettings();
+            JSONObject settingsObj = new JSONObject();
+            settingsObj.put("display_scale", settings.get("display_scale"));
+            return settingsObj.toString();
+        } catch (Exception e) {
+            Log.e(TAG, "获取显示设置失败", e);
+            return "{\"display_scale\":1.0}";
         }
     }
 }
