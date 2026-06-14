@@ -1,64 +1,59 @@
 name: Android CI Build
 
-于:
+on:
   push:
-    分支: [ main, master ]
+    branches: [ main, master ]
   pull_request:
-    分支: [ main, master ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # 防止构建无限挂起
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 1  # 不需要完整历史，加快检出速度
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
-        distribution: 'adopt'
+        distribution: 'temurin'  # 改用temurin，更稳定
+        cache: 'gradle'  # 自动缓存Gradle依赖，大幅提速
 
-    - name: Set up Android SDK
+    - name: Set up Android SDK (匹配车机API 28)
       uses: android-actions/setup-android@v3
       with:
-        api-level: 30
-        build-tools: "30.0.2"
-        ndk-version: "21.4.7075529"
+        api-level: 28  # 与零跑C11车机系统版本完全一致
+        build-tools: "28.0.3"  # 对应API 28的官方构建工具版本
+        ndk-version: ""  # 项目无NDK依赖，移除不必要配置
 
     - name: Accept Android SDK licenses
-      run: yes | sdkmanager --licenses || true
+      run: yes | sdkmanager --licenses > /dev/null 2>&1
 
     - name: Make gradlew executable
       run: chmod +x gradlew
 
-    - name: Build debug APK
-      run: ./gradlew assembleDebug --stacktrace
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_HOME }}
-        JAVA_HOME: ${{ env.JAVA_HOME }}
+    - name: Clean previous build
+      run: ./gradlew clean --no-build-cache
 
-    - name: Build release APK
-      run: ./gradlew assembleRelease --stacktrace
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_HOME }}
-        JAVA_HOME: ${{ env.JAVA_HOME }}
+    - name: Build debug APK (测试用)
+      run: ./gradlew assembleDebug --stacktrace --info
+
+    - name: Build unsigned release APK (生产用)
+      run: ./gradlew assembleRelease --stacktrace --info -x signReleaseBundle -x signReleaseApk
+      # 跳过签名步骤，避免CI因缺少签名文件失败
 
     - name: Find APK files
       id: find_apk
       run: |
-        echo "=== Searching for APK files ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "No APK found with find"
-        echo "=== Listing build outputs directory ==="
-        ls -laR app/build/outputs/ 2>/dev/null || echo "No outputs directory"
-        
-        # 设置 APK 路径变量
-        DEBUG_APK=$(find app/build/outputs -name "*debug*.apk" -type f | head -1)
-        RELEASE_APK=$(find app/build/outputs -name "*release*.apk" -type f | head -1)
+        echo "=== 查找APK文件 ==="
+        DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" -type f | head -1)
+        RELEASE_APK=$(find app/build/outputs/apk/release -name "*-unsigned.apk" -type f | head -1)
         
         echo "debug_apk=$DEBUG_APK" >> $GITHUB_OUTPUT
         echo "release_apk=$RELEASE_APK" >> $GITHUB_OUTPUT
@@ -70,64 +65,28 @@ jobs:
       if: steps.find_apk.outputs.debug_apk != ''
       uses: actions/upload-artifact@v4
       with:
-        name: debug-apk
+        name: DiPartner-debug-${{ github.sha }}
         path: ${{ steps.find_apk.outputs.debug_apk }}
-        if-no-files-found: warn
+        retention-days: 30  # 保留30天
 
-    - name: Upload release APK
+    - name: Upload unsigned release APK
       if: steps.find_apk.outputs.release_apk != ''
       uses: actions/upload-artifact@v4
       with:
-        name: release-apk
+        name: DiPartner-release-unsigned-${{ github.sha }}
         path: ${{ steps.find_apk.outputs.release_apk }}
-        if-no-files-found: warn
+        retention-days: 90  # 发布包保留90天
 
-    - name: Create release on tag
+    - name: Create GitHub Release (打标签时触发)
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        文件: |
+        files: |
           ${{ steps.find_apk.outputs.debug_apk }}
           ${{ steps.find_apk.outputs.release_apk }}
-        name: Release ${{ github.ref_name }}
-        body: |
-          ## 📦 Build Artifacts
-          
-          ### Debug APK
-          - Debug build for testing
-          
-          ### Release APK
-          - Production-ready build
-          
-          ## 🚀 Changes
-          - Automated build from CI
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Commit build artifacts to branch
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        
-        # Create build directory if not exists
-        mkdir -p build_artifacts
-        
-        # Copy APKs to build directory
-        if [ -n "${{ steps.find_apk.outputs.debug_apk }}" ]; then
-          cp "${{ steps.find_apk.outputs.debug_apk }}" build_artifacts/ || true
-        fi
-        if [ -n "${{ steps.find_apk.outputs.release_apk }}" ]; then
-          cp "${{ steps.find_apk.outputs.release_apk }}" build_artifacts/ || true
-        fi
-        
-        # Check if there are changes
-        if [ -n "$(git status --porcelain build_artifacts/)" ]; then
-          git add build_artifacts/
-          git commit -m "chore: update build artifacts [CI]"
-          git push
-        else
-          echo "No changes to commit"
-        fi
+        name: Release v${{ github.ref_name }}
+        generate_release_notes: true  # 自动生成更新日志
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
